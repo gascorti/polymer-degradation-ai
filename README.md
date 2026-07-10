@@ -69,6 +69,26 @@ pip install -r requirements.txt
 > pipeline los omite automáticamente (con un aviso) y sigue funcionando con
 > Random Forest. Instalalos para tener los 3 modelos y el tracking completo.
 
+## Trabajar en VS Code
+
+El repo ya incluye configuración lista en `.vscode/`:
+
+- **`settings.json`**: apunta al intérprete de `venv/`, activa pytest como test runner y formateo automático con `black` al guardar.
+- **`launch.json`**: configuraciones de debug (con breakpoints) para `main.py`, para `src.models.train` solo, y para correr los tests con el depurador.
+- **`tasks.json`**: tareas rápidas desde la paleta de comandos (`Ctrl+Shift+P` / `Cmd+Shift+P` → *Tasks: Run Task*): crear el venv, instalar dependencias, correr el pipeline, correr tests, o levantar MLflow UI.
+- **`extensions.json`**: extensiones recomendadas (Python, Pylance, Black, Jupyter, GitLens).
+
+Pasos para arrancar:
+
+1. Abrí la carpeta del proyecto en VS Code.
+2. Cuando te lo sugiera, instalá las extensiones recomendadas.
+3. `Ctrl+Shift+P` → *Tasks: Run Task* → **"1. Crear entorno virtual"**, después **"2. Instalar dependencias"**.
+4. Seleccioná el intérprete `venv` (VS Code lo va a detectar automáticamente; si no, `Ctrl+Shift+P` → *Python: Select Interpreter*).
+5. Para correr con breakpoints: pestaña **Run and Debug** → elegí *"Python: main.py (pipeline completo)"* → `F5`.
+6. Para tests: pestaña **Testing** (ícono del matraz) → se descubren automáticamente los tests de `tests/test_pipeline.py`.
+
+El repo ya tiene `git init` con un `.gitignore` que excluye datos generados, `venv/`, cachés y corridas de MLflow — solo versiona código y configuración.
+
 ## Uso rápido
 
 Correr todo el pipeline (genera datos sintéticos, estandariza, ajusta
