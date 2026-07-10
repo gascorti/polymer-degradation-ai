@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+venv/
+mlruns/
+.pytest_cache/
+data/processed/*.csv
+data/raw/*.csv
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+outputs/figures/*.png
+outputs/reports/*.csv

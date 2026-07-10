@@ -1,0 +1,46 @@
+# Configuración central del proyecto
+# "Aplicación de IA para la predicción de tasas de degradación
+#  de polímeros biocompatibles en medios fisiológicos"
+
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed/dataset_estandarizado.csv"
+  external_data: "data/external"
+  figures: "outputs/figures"
+  reports: "outputs/reports"
+
+data:
+  polymer_types: ["PLA", "PCL", "PGA", "PLGA", "PHB", "Otro"]
+  media_types: ["SBF", "PBS", "Agua destilada", "Suero fisiológico", "Otro"]
+  # Bordes de las clases de tasa de degradación, definidos sobre k (día^-1)
+  degradation_class_bins: [0.0, 0.01, 0.03, 1.0]
+  degradation_class_labels: ["baja", "media", "alta"]
+
+split:
+  test_size: 0.2
+  val_size: 0.1
+  random_state: 42
+
+kinetics:
+  model: "pseudo_primer_orden"   # M(t) = M0 * exp(-k*t)
+
+models:
+  random_forest:
+    n_estimators: 300
+    max_depth: 12
+    random_state: 42
+  xgboost:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    random_state: 42
+  lstm:
+    units: 32
+    epochs: 60
+    batch_size: 16
+    sequence_length: 10
+    random_state: 42
+
+mlflow:
+  tracking_uri: "mlruns"
+  experiment_name: "degradacion_polimeros_biocompatibles"
