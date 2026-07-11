@@ -19,8 +19,12 @@ from src.preprocessing.features import split_dataset, get_X_y
 from src.preprocessing.sequences import build_sequence_dataset
 from src.models.random_forest import build_random_forest_pipeline
 from src.models.xgboost_model import build_xgboost_pipeline, XGBOOST_AVAILABLE
-from src.models.lstm_model import build_lstm_model, train_lstm, TENSORFLOW_AVAILABLE
-from src.evaluation.metrics import classification_metrics, regression_metrics, build_comparison_table
+from src.models.lstm_model import build_lstm_model, train_lstm, TORCH_AVAILABLE
+from src.evaluation.metrics import (
+    classification_metrics, regression_metrics, build_comparison_table, classification_report_table,
+)
+
+os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 
 try:
     import mlflow
@@ -99,7 +103,10 @@ def train_xgboost(df_train, df_val, df_test, cfg, target_col="degradation_class"
             _mlflow_log_params(xgb_cfg)
             _mlflow_log_metrics(metrics)
             if MLFLOW_AVAILABLE:
-                mlflow.sklearn.log_model(pipeline, "model")
+                mlflow.sklearn.log_model(
+                    pipeline, "model",
+                    skops_trusted_types=["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"],
+                )
     except Exception as e:
         print(f"[ERROR] XGBoost — falló durante el entrenamiento: {type(e).__name__}: {e}")
         return None, None
@@ -108,9 +115,9 @@ def train_xgboost(df_train, df_val, df_test, cfg, target_col="degradation_class"
 
 
 def train_lstm_model(df_long, df_curves_train, df_curves_val, df_curves_test, cfg):
-    if not TENSORFLOW_AVAILABLE:
-        print("[SKIP] LSTM — el paquete 'tensorflow' no está instalado en este entorno "
-              "(ejecutá `pip install tensorflow` y, si estás en Colab, reiniciá el entorno de ejecución).")
+    if not TORCH_AVAILABLE:
+        print("[SKIP] LSTM — el paquete 'torch' no está instalado en este entorno "
+              "(ejecutá `pip install torch` y, si estás en Colab, reiniciá el entorno de ejecución).")
         return None, None
 
     lstm_cfg = cfg["models"]["lstm"]
@@ -196,7 +203,56 @@ def run_full_training(config_path="config/config.yaml"):
         print(comparison_df)
         print(f"\nGuardado en {comparison_path}")
 
-    return results
+    target_col = "degradation_class"
+    labels = cfg["data"]["degradation_class_labels"]
+    rf_pred = xgb_pred = lstm_pred_k = None
+    rf_eval = xgb_eval = None
+
+    if rf_model is not None:
+        X_test, y_test = get_X_y(df_test, target_col)
+        y_pred = rf_model.predict(X_test)
+        rf_pred = pd.Series(y_pred, index=df_test["curve_id"].values)
+        rf_eval = {
+            "y_true": y_test.values, "y_pred": y_pred,
+            "y_proba": rf_model.predict_proba(X_test), "classes": list(rf_model.classes_),
+            "report": classification_report_table(y_test.values, y_pred, labels),
+        }
+
+    if xgb_model is not None:
+        classes = sorted(df_train[target_col].unique())
+        idx_to_class = dict(enumerate(classes))
+        X_test, y_test = get_X_y(df_test, target_col)
+        xgb_pred_num = xgb_model.predict(X_test)
+        y_pred = np.array([idx_to_class[i] for i in xgb_pred_num])
+        xgb_pred = pd.Series(y_pred, index=df_test["curve_id"].values)
+        xgb_eval = {
+            "y_true": y_test.values, "y_pred": y_pred,
+            "y_proba": xgb_model.predict_proba(X_test), "classes": classes,
+            "report": classification_report_table(y_test.values, y_pred, labels),
+        }
+
+    if lstm_model is not None:
+        seq_len = cfg["models"]["lstm"]["sequence_length"]
+        X_test_seq, ids_test_seq = build_sequence_dataset(df_long, df_test, seq_len)
+        lstm_pred_k = pd.Series(lstm_model.predict(X_test_seq, verbose=0).flatten(), index=ids_test_seq)
+
+    if rf_eval is not None:
+        rf_eval["report"].to_csv(os.path.join(cfg["paths"]["reports"], "reporte_clasificacion_random_forest.csv"))
+    if xgb_eval is not None:
+        xgb_eval["report"].to_csv(os.path.join(cfg["paths"]["reports"], "reporte_clasificacion_xgboost.csv"))
+
+    extras = {
+        "df_test": df_test,
+        "df_long": df_long,
+        "labels": labels,
+        "rf_pred": rf_pred,
+        "xgb_pred": xgb_pred,
+        "rf_eval": rf_eval,
+        "xgb_eval": xgb_eval,
+        "lstm_pred_k": lstm_pred_k,
+    }
+
+    return results, extras
 
 
 if __name__ == "__main__":

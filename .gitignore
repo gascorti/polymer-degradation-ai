@@ -9,3 +9,4 @@ data/raw/*.csv
 !data/processed/.gitkeep
 outputs/figures/*.png
 outputs/reports/*.csv
+~$*

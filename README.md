@@ -65,7 +65,7 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> XGBoost, TensorFlow y MLflow son opcionales: si no están instalados, el
+> XGBoost, PyTorch (LSTM) y MLflow son opcionales: si no están instalados, el
 > pipeline los omite automáticamente (con un aviso) y sigue funcionando con
 > Random Forest. Instalalos para tener los 3 modelos y el tracking completo.
 
@@ -107,8 +107,21 @@ python -m src.models.train --config config/config.yaml
 Ver el tracking de experimentos en MLflow (si está instalado):
 
 ```bash
+# Windows (PowerShell):
+$env:MLFLOW_ALLOW_FILE_STORE = "true"
 mlflow ui --backend-store-uri mlruns
+
+# Linux/Mac:
+MLFLOW_ALLOW_FILE_STORE=true mlflow ui --backend-store-uri mlruns
 ```
+
+> La variable `MLFLOW_ALLOW_FILE_STORE` es necesaria desde MLflow 3.x, que deprecó el
+> backend de archivos (`mlruns`) por defecto. `src/models/train.py` ya la fija
+> automáticamente al entrenar, pero el comando `mlflow ui` corre en un proceso aparte
+> y necesita que se la pases explícitamente.
+
+Abrí luego http://127.0.0.1:5000 en el navegador para ver runs, parámetros, métricas
+y artefactos (modelos) de cada entrenamiento, y comparar corridas entre sí.
 
 Correr los tests:
 

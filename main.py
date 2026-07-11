@@ -23,6 +23,7 @@ from src.preprocessing.standardize import standardize_units, handle_missing_and_
 from src.preprocessing.kinetics import build_curve_level_dataset, categorize_degradation_rate
 from src.visualization.plots import (
     plot_class_distribution, plot_correlation_heatmap, plot_degradation_curves,
+    plot_model_curves_comparison, plot_confusion_matrix, plot_roc_curves,
 )
 from src.models.train import run_full_training
 
@@ -65,7 +66,24 @@ def main(n_curves: int, seed: int, config_path: str, use_synthetic: bool):
     print(f"Figuras guardadas:\n - {p1}\n - {p2}\n - {p3}")
 
     print("\n=== 5. Entrenamiento y comparación de modelos (HU3, HU4, HU5) ===")
-    results = run_full_training(config_path)
+    results, extras = run_full_training(config_path)
+
+    print("\n=== 6. Curvas reconstruidas por modelo ===")
+    p4 = plot_model_curves_comparison(
+        extras["df_long"], extras["df_test"],
+        rf_pred=extras["rf_pred"], xgb_pred=extras["xgb_pred"], lstm_pred_k=extras["lstm_pred_k"],
+    )
+    print(f"Figura guardada: {p4}")
+
+    print("\n=== 7. Evaluación detallada de clasificación (RF vs XGBoost) ===")
+    labels = extras["labels"]
+    for name, ev in [("Random Forest", extras["rf_eval"]), ("XGBoost", extras["xgb_eval"])]:
+        if ev is None:
+            continue
+        p_cm = plot_confusion_matrix(ev["y_true"], ev["y_pred"], labels, name)
+        p_roc = plot_roc_curves(ev["y_true"], ev["y_proba"], ev["classes"], name)
+        print(f"{name}: {p_cm}, {p_roc}")
+        print(ev["report"])
 
     print("\nPipeline completo ejecutado con éxito.")
     return df_curves, results

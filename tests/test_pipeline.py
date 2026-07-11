@@ -1,7 +1,7 @@
 """
 Tests del pipeline. Cubren generación de datos, estandarización, ajuste
 cinético, split y entrenamiento de Random Forest (el único modelo que no
-depende de librerías externas pesadas como xgboost/tensorflow).
+depende de librerías externas pesadas como xgboost/torch).
 """
 
 import sys
@@ -113,13 +113,13 @@ def test_random_forest_end_to_end():
 
 
 def test_lstm_end_to_end():
-    """Entrena y evalúa la LSTM (TensorFlow/Keras) end-to-end. Se salta si tensorflow no está instalado."""
-    from src.models.lstm_model import build_lstm_model, train_lstm, TENSORFLOW_AVAILABLE
+    """Entrena y evalúa la LSTM (PyTorch) end-to-end. Se salta si torch no está instalado."""
+    from src.models.lstm_model import build_lstm_model, train_lstm, TORCH_AVAILABLE
     from src.preprocessing.sequences import build_sequence_dataset
     from src.evaluation.metrics import regression_metrics
 
-    if not TENSORFLOW_AVAILABLE:
-        print("[SKIP] tensorflow no instalado, se omite test_lstm_end_to_end.")
+    if not TORCH_AVAILABLE:
+        print("[SKIP] torch no instalado, se omite test_lstm_end_to_end.")
         return
 
     df, _ = generate_dataset(n_curves=60, seed=6)

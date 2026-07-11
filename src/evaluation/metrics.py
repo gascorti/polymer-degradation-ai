@@ -6,7 +6,7 @@ comparativo entre modelos (HU5, Criterio de aceptación HU5).
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
-    accuracy_score, f1_score, confusion_matrix,
+    accuracy_score, f1_score, confusion_matrix, classification_report,
     mean_squared_error, mean_absolute_error, r2_score,
 )
 
@@ -17,6 +17,12 @@ def classification_metrics(y_true, y_pred, labels=None) -> dict:
         "f1_macro": f1_score(y_true, y_pred, average="macro"),
         "confusion_matrix": confusion_matrix(y_true, y_pred, labels=labels).tolist(),
     }
+
+
+def classification_report_table(y_true, y_pred, labels) -> pd.DataFrame:
+    """Precision/recall/f1-score/support por clase, como DataFrame (una fila por clase)."""
+    report = classification_report(y_true, y_pred, labels=labels, output_dict=True, zero_division=0)
+    return pd.DataFrame(report).T.loc[labels]
 
 
 def regression_metrics(y_true, y_pred) -> dict:
