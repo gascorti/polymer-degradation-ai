@@ -25,6 +25,7 @@ from src.visualization.plots import (
     plot_class_distribution, plot_correlation_heatmap, plot_degradation_curves,
     plot_model_curves_comparison, plot_confusion_matrix, plot_roc_curves,
 )
+from src.visualization.explainability import plot_shap_global_importance, plot_shap_local_explanation
 from src.models.train import run_full_training
 
 
@@ -84,6 +85,17 @@ def main(n_curves: int, seed: int, config_path: str, use_synthetic: bool):
         p_roc = plot_roc_curves(ev["y_true"], ev["y_proba"], ev["classes"], name)
         print(f"{name}: {p_cm}, {p_roc}")
         print(ev["report"])
+
+    print("\n=== 8. Explicabilidad (SHAP) ===")
+    for name, ev in [("Random Forest", extras["rf_eval"]), ("XGBoost", extras["xgb_eval"])]:
+        if ev is None or ev["shap"] is None:
+            continue
+        p_global = plot_shap_global_importance(ev["shap"], name)
+        instance_idx = 0
+        predicted_class = ev["y_pred"][instance_idx]
+        class_idx = ev["classes"].index(predicted_class)
+        p_local = plot_shap_local_explanation(ev["shap"], instance_idx, class_idx, predicted_class, name)
+        print(f"{name}: {p_global}, {p_local}")
 
     print("\nPipeline completo ejecutado con éxito.")
     return df_curves, results

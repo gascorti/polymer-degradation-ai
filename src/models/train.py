@@ -23,6 +23,7 @@ from src.models.lstm_model import build_lstm_model, train_lstm, TORCH_AVAILABLE
 from src.evaluation.metrics import (
     classification_metrics, regression_metrics, build_comparison_table, classification_report_table,
 )
+from src.visualization.explainability import compute_shap_explanation
 
 os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 
@@ -203,6 +204,13 @@ def run_full_training(config_path="config/config.yaml"):
         print(comparison_df)
         print(f"\nGuardado en {comparison_path}")
 
+    def _safe_shap(pipeline, X, model_name):
+        try:
+            return compute_shap_explanation(pipeline, X)
+        except Exception as e:
+            print(f"[SKIP] SHAP — {model_name}: {type(e).__name__}: {e}")
+            return None
+
     target_col = "degradation_class"
     labels = cfg["data"]["degradation_class_labels"]
     rf_pred = xgb_pred = lstm_pred_k = None
@@ -216,6 +224,7 @@ def run_full_training(config_path="config/config.yaml"):
             "y_true": y_test.values, "y_pred": y_pred,
             "y_proba": rf_model.predict_proba(X_test), "classes": list(rf_model.classes_),
             "report": classification_report_table(y_test.values, y_pred, labels),
+            "shap": _safe_shap(rf_model, X_test, "Random Forest"),
         }
 
     if xgb_model is not None:
@@ -229,6 +238,7 @@ def run_full_training(config_path="config/config.yaml"):
             "y_true": y_test.values, "y_pred": y_pred,
             "y_proba": xgb_model.predict_proba(X_test), "classes": classes,
             "report": classification_report_table(y_test.values, y_pred, labels),
+            "shap": _safe_shap(xgb_model, X_test, "XGBoost"),
         }
 
     if lstm_model is not None:

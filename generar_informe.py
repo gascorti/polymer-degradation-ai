@@ -219,7 +219,26 @@ def build_report():
     add_figure(doc, "matriz_confusion_xgboost.png", "Figura 7. Matriz de confusión — XGBoost.", width_cm=9)
     add_figure(doc, "roc_xgboost.png", "Figura 8. Curvas ROC one-vs-rest — XGBoost.", width_cm=9)
 
-    doc.add_heading("8. Próximos pasos", level=1)
+    doc.add_heading("6.5. Explicabilidad (SHAP)", level=2)
+    doc.add_paragraph(
+        "Se usó SHAP (TreeExplainer, exacto para modelos de árboles) para explicar las "
+        "predicciones de Random Forest y XGBoost: importancia global (promedio de |valor SHAP| "
+        "entre todas las curvas de test) y una explicación local (por qué el modelo clasificó "
+        "una curva particular como lo hizo). Ambos modelos coinciden en que el peso molecular "
+        "inicial (initial_mw_kDa) es la variable más influyente, seguida de la cristalinidad y "
+        "el tipo de polímero (PGA en particular) — coherente con lo esperado fisicoquímicamente: "
+        "mayor peso molecular y cristalinidad se asocian a degradación más lenta."
+    )
+
+    doc.add_heading("Random Forest", level=3)
+    add_figure(doc, "shap_global_random_forest.png", "Figura 9. Importancia global (SHAP) — Random Forest.", width_cm=13)
+    add_figure(doc, "shap_local_random_forest.png", "Figura 10. Explicación local (SHAP) de una curva de test — Random Forest.", width_cm=15)
+
+    doc.add_heading("XGBoost", level=3)
+    add_figure(doc, "shap_global_xgboost.png", "Figura 11. Importancia global (SHAP) — XGBoost.", width_cm=13)
+    add_figure(doc, "shap_local_xgboost.png", "Figura 12. Explicación local (SHAP) de una curva de test — XGBoost.", width_cm=15)
+
+    doc.add_heading("7. Próximos pasos", level=1)
     for item in [
         "HU1 (Épica 1): extracción real de curvas desde publicaciones científicas con "
         "WebPlotDigitizer, y reemplazo del dataset sintético.",
