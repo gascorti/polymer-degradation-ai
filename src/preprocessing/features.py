@@ -11,12 +11,21 @@ from sklearn.compose import ColumnTransformer
 from src.data.schema import CATEGORICAL_COLUMNS, NUMERIC_COLUMNS
 
 
-def build_preprocessor() -> ColumnTransformer:
-    """Preprocesador sklearn: one-hot para categóricas, escalado estándar para numéricas."""
+def build_preprocessor(categorical_cols: list = None, numeric_cols: list = None) -> ColumnTransformer:
+    """
+    Preprocesador sklearn: one-hot para categóricas, escalado estándar para numéricas.
+    Por defecto usa el esquema sintético (src/data/schema.py); pasar
+    REAL_CATEGORICAL_COLUMNS/REAL_NUMERIC_COLUMNS para el dataset real.
+    """
+    if categorical_cols is None:
+        categorical_cols = CATEGORICAL_COLUMNS
+    if numeric_cols is None:
+        numeric_cols = NUMERIC_COLUMNS
+
     return ColumnTransformer(
         transformers=[
-            ("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL_COLUMNS),
-            ("num", StandardScaler(), NUMERIC_COLUMNS),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_cols),
+            ("num", StandardScaler(), numeric_cols),
         ]
     )
 
@@ -41,8 +50,8 @@ def split_dataset(df: pd.DataFrame, target_col: str, test_size: float, val_size:
     return df_train.reset_index(drop=True), df_val.reset_index(drop=True), df_test.reset_index(drop=True)
 
 
-def get_X_y(df: pd.DataFrame, target_col: str):
-    feature_cols = CATEGORICAL_COLUMNS + NUMERIC_COLUMNS
+def get_X_y(df: pd.DataFrame, target_col: str, categorical_cols: list = None, numeric_cols: list = None):
+    feature_cols = (categorical_cols or CATEGORICAL_COLUMNS) + (numeric_cols or NUMERIC_COLUMNS)
     X = df[feature_cols]
     y = df[target_col]
     return X, y

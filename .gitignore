@@ -5,6 +5,7 @@ mlruns/
 .pytest_cache/
 data/processed/*.csv
 data/raw/*.csv
+data/raw/*.xlsx
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 outputs/figures/*.png

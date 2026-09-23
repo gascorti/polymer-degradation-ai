@@ -55,14 +55,15 @@ def _mlflow_log_metrics(metrics: dict):
         mlflow.log_metrics(loggable)
 
 
-def train_random_forest(df_train, df_val, df_test, cfg, target_col="degradation_class"):
-    X_train, y_train = get_X_y(df_train, target_col)
-    X_val, y_val = get_X_y(df_val, target_col)
-    X_test, y_test = get_X_y(df_test, target_col)
+def train_random_forest(df_train, df_val, df_test, cfg, target_col="degradation_class",
+                         categorical_cols=None, numeric_cols=None):
+    X_train, y_train = get_X_y(df_train, target_col, categorical_cols, numeric_cols)
+    X_val, y_val = get_X_y(df_val, target_col, categorical_cols, numeric_cols)
+    X_test, y_test = get_X_y(df_test, target_col, categorical_cols, numeric_cols)
 
     rf_cfg = cfg["models"]["random_forest"]
     with _mlflow_start("random_forest"):
-        pipeline = build_random_forest_pipeline(**rf_cfg)
+        pipeline = build_random_forest_pipeline(**rf_cfg, categorical_cols=categorical_cols, numeric_cols=numeric_cols)
         pipeline.fit(X_train, y_train)
 
         y_pred = pipeline.predict(X_test)
@@ -77,14 +78,15 @@ def train_random_forest(df_train, df_val, df_test, cfg, target_col="degradation_
     return pipeline, metrics
 
 
-def train_xgboost(df_train, df_val, df_test, cfg, target_col="degradation_class"):
+def train_xgboost(df_train, df_val, df_test, cfg, target_col="degradation_class",
+                   categorical_cols=None, numeric_cols=None):
     if not XGBOOST_AVAILABLE:
         print("[SKIP] XGBoost — el paquete 'xgboost' no está instalado en este entorno "
               "(ejecutá `pip install xgboost` y, si estás en Colab, reiniciá el entorno de ejecución).")
         return None, None
 
-    X_train, y_train = get_X_y(df_train, target_col)
-    X_test, y_test = get_X_y(df_test, target_col)
+    X_train, y_train = get_X_y(df_train, target_col, categorical_cols, numeric_cols)
+    X_test, y_test = get_X_y(df_test, target_col, categorical_cols, numeric_cols)
 
     # XGBoost requiere target numérico
     classes = sorted(df_train[target_col].unique())
@@ -95,7 +97,7 @@ def train_xgboost(df_train, df_val, df_test, cfg, target_col="degradation_class"
     xgb_cfg = cfg["models"]["xgboost"]
     try:
         with _mlflow_start("xgboost"):
-            pipeline = build_xgboost_pipeline(**xgb_cfg)
+            pipeline = build_xgboost_pipeline(**xgb_cfg, categorical_cols=categorical_cols, numeric_cols=numeric_cols)
             pipeline.fit(X_train, y_train_num)
 
             y_pred_num = pipeline.predict(X_test)
@@ -170,16 +172,22 @@ def run_full_training(config_path="config/config.yaml"):
         random_state=split_cfg["random_state"],
     )
 
+    features_cfg = cfg.get("features", {})
+    categorical_cols = features_cfg.get("categorical_columns")
+    numeric_cols = features_cfg.get("numeric_columns")
+
     results = {}
     all_model_names = ["Random Forest", "XGBoost", "LSTM (regresión de k)"]
 
     print("\n--- Entrenando Random Forest ---")
-    rf_model, rf_metrics = train_random_forest(df_train, df_val, df_test, cfg)
+    rf_model, rf_metrics = train_random_forest(df_train, df_val, df_test, cfg,
+                                                categorical_cols=categorical_cols, numeric_cols=numeric_cols)
     if rf_metrics:
         results["Random Forest"] = {"accuracy": rf_metrics["accuracy"], "f1_macro": rf_metrics["f1_macro"]}
 
     print("\n--- Entrenando XGBoost ---")
-    xgb_model, xgb_metrics = train_xgboost(df_train, df_val, df_test, cfg)
+    xgb_model, xgb_metrics = train_xgboost(df_train, df_val, df_test, cfg,
+                                            categorical_cols=categorical_cols, numeric_cols=numeric_cols)
     if xgb_metrics:
         results["XGBoost"] = {"accuracy": xgb_metrics["accuracy"], "f1_macro": xgb_metrics["f1_macro"]}
 
@@ -217,7 +225,7 @@ def run_full_training(config_path="config/config.yaml"):
     rf_eval = xgb_eval = None
 
     if rf_model is not None:
-        X_test, y_test = get_X_y(df_test, target_col)
+        X_test, y_test = get_X_y(df_test, target_col, categorical_cols, numeric_cols)
         y_pred = rf_model.predict(X_test)
         rf_pred = pd.Series(y_pred, index=df_test["curve_id"].values)
         rf_eval = {
@@ -230,7 +238,7 @@ def run_full_training(config_path="config/config.yaml"):
     if xgb_model is not None:
         classes = sorted(df_train[target_col].unique())
         idx_to_class = dict(enumerate(classes))
-        X_test, y_test = get_X_y(df_test, target_col)
+        X_test, y_test = get_X_y(df_test, target_col, categorical_cols, numeric_cols)
         xgb_pred_num = xgb_model.predict(X_test)
         y_pred = np.array([idx_to_class[i] for i in xgb_pred_num])
         xgb_pred = pd.Series(y_pred, index=df_test["curve_id"].values)

@@ -18,19 +18,26 @@ def load_raw_curves(paths: list) -> pd.DataFrame:
     return df
 
 
-def standardize_units(df: pd.DataFrame) -> pd.DataFrame:
+def standardize_units(df: pd.DataFrame, numeric_cols: list = None) -> pd.DataFrame:
     """
     Normaliza tipos y rangos:
     - Fuerza tipos numéricos en columnas numéricas.
     - Recorta mass_loss_pct al rango [0, 100].
     - Normaliza strings de categóricas (mayúsculas para polímero, capitalizado para medio).
+
+    `numeric_cols` permite adaptar la lista de columnas a coercionar al esquema
+    real (ver src/data/schema.py); por defecto usa el esquema sintético.
     """
     df = df.copy()
 
-    numeric_cols = [
-        "temperature_C", "pH", "initial_mw_kDa", "crystallinity_pct",
-        "surface_area_mm2", "time_days", "mass_loss_pct",
-    ]
+    if numeric_cols is None:
+        numeric_cols = [
+            "temperature_C", "pH", "initial_mw_kDa", "crystallinity_pct",
+            "surface_area_mm2", "time_days", "mass_loss_pct",
+        ]
+    else:
+        numeric_cols = numeric_cols + ["time_days", "mass_loss_pct"]
+
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -43,28 +50,24 @@ def standardize_units(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def handle_missing_and_outliers(df: pd.DataFrame, z_thresh: float = 4.0) -> pd.DataFrame:
+def handle_missing_and_outliers(df: pd.DataFrame, z_thresh: float = 4.0, numeric_cols: list = None) -> pd.DataFrame:
     """
-    Elimina filas con nulos en columnas críticas y marca/filtra outliers
-    groseros en variables numéricas continuas mediante z-score por polímero.
+    Elimina filas con nulos en columnas críticas, imputa nulos en variables
+    numéricas por mediana agrupada por tipo de polímero, y filtra outliers
+    groseros mediante z-score por curva.
+
+    `numeric_cols` permite adaptar qué columnas imputar al esquema real (ver
+    src/data/schema.py); por defecto usa el esquema sintético.
     """
     df = df.copy()
     critical = ["curve_id", "polymer_type", "time_days", "mass_loss_pct"]
     df = df.dropna(subset=critical)
 
-    df["temperature_C"] = df.groupby("polymer_type")["temperature_C"].transform(
-        lambda s: s.fillna(s.median())
-    )
-    df["pH"] = df.groupby("polymer_type")["pH"].transform(lambda s: s.fillna(s.median()))
-    df["initial_mw_kDa"] = df.groupby("polymer_type")["initial_mw_kDa"].transform(
-        lambda s: s.fillna(s.median())
-    )
-    df["crystallinity_pct"] = df.groupby("polymer_type")["crystallinity_pct"].transform(
-        lambda s: s.fillna(s.median())
-    )
-    df["surface_area_mm2"] = df.groupby("polymer_type")["surface_area_mm2"].transform(
-        lambda s: s.fillna(s.median())
-    )
+    if numeric_cols is None:
+        numeric_cols = ["temperature_C", "pH", "initial_mw_kDa", "crystallinity_pct", "surface_area_mm2"]
+
+    for col in numeric_cols:
+        df[col] = df.groupby("polymer_type")[col].transform(lambda s: s.fillna(s.median()))
 
     grp = df.groupby("curve_id")["mass_loss_pct"]
     z_score = (df["mass_loss_pct"] - grp.transform("mean")) / (grp.transform("std") + 1e-9)

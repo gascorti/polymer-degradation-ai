@@ -16,7 +16,10 @@ except ImportError:
     XGBOOST_AVAILABLE = False
 
 
-def build_xgboost_pipeline(n_estimators=300, max_depth=6, learning_rate=0.05, random_state=42) -> Pipeline:
+def build_xgboost_pipeline(
+    n_estimators=300, max_depth=6, learning_rate=0.05, random_state=42,
+    categorical_cols=None, numeric_cols=None,
+) -> Pipeline:
     if not XGBOOST_AVAILABLE:
         raise ImportError(
             "xgboost no está instalado. Ejecutá `pip install xgboost` para usar este modelo."
@@ -30,6 +33,6 @@ def build_xgboost_pipeline(n_estimators=300, max_depth=6, learning_rate=0.05, ra
         eval_metric="mlogloss",
     )
     return Pipeline(steps=[
-        ("preprocessor", build_preprocessor()),
+        ("preprocessor", build_preprocessor(categorical_cols, numeric_cols)),
         ("model", model),
     ])

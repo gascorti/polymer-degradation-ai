@@ -19,6 +19,8 @@ import yaml
 import pandas as pd
 
 from src.data.generate_synthetic import generate_dataset
+from src.data.load_real_dataset import load_real_dataset, REAL_POINT_NUMERIC_COLUMNS
+from src.data.schema import REAL_CATEGORICAL_COLUMNS, REAL_NUMERIC_COLUMNS
 from src.preprocessing.standardize import standardize_units, handle_missing_and_outliers
 from src.preprocessing.kinetics import build_curve_level_dataset, categorize_degradation_rate
 from src.visualization.plots import (
@@ -33,8 +35,15 @@ def main(n_curves: int, seed: int, config_path: str, use_synthetic: bool):
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
 
+    source = cfg["data"].get("source", "synthetic")
+
     print("=== 1. Datos ===")
-    if use_synthetic:
+    if source == "real":
+        homogeneity_levels = cfg["data"].get("homogeneity_levels", ["nucleo"])
+        df_long = load_real_dataset(cfg["data"]["real_dataset_path"], homogeneity_levels)
+        print(f"Cargadas {df_long['curve_id'].nunique()} curvas reales "
+              f"(niveles de homogeneidad: {homogeneity_levels}) -> {cfg['data']['real_dataset_path']}")
+    elif use_synthetic:
         df_long, _ = generate_dataset(n_curves=n_curves, seed=seed)
         df_long.to_csv("data/raw/curvas_sinteticas.csv", index=False)
         print(f"Generadas {n_curves} curvas sintéticas -> data/raw/curvas_sinteticas.csv")
@@ -42,13 +51,20 @@ def main(n_curves: int, seed: int, config_path: str, use_synthetic: bool):
         df_long = pd.read_csv("data/raw/curvas_sinteticas.csv")
 
     print("\n=== 2. Estandarización (HU2) ===")
-    df_long = standardize_units(df_long)
-    df_long = handle_missing_and_outliers(df_long)
+    point_numeric_cols = REAL_POINT_NUMERIC_COLUMNS if source == "real" else None
+    df_long = standardize_units(df_long, numeric_cols=point_numeric_cols)
+    df_long = handle_missing_and_outliers(df_long, numeric_cols=point_numeric_cols)
     df_long.to_csv("data/processed/curvas_estandarizadas.csv", index=False)
     print(f"{len(df_long)} puntos válidos, {df_long['curve_id'].nunique()} curvas.")
 
     print("\n=== 3. Ajuste cinético y categorización ===")
-    df_curves = build_curve_level_dataset(df_long)
+    if source == "real":
+        metadata_cols = REAL_CATEGORICAL_COLUMNS + [
+            c for c in REAL_NUMERIC_COLUMNS if c not in ("assay_duration_days", "n_points")
+        ]
+    else:
+        metadata_cols = None
+    df_curves = build_curve_level_dataset(df_long, metadata_cols=metadata_cols)
     df_curves = categorize_degradation_rate(
         df_curves,
         bins=cfg["data"]["degradation_class_bins"],
@@ -59,10 +75,13 @@ def main(n_curves: int, seed: int, config_path: str, use_synthetic: bool):
     print(df_curves["degradation_class"].value_counts())
 
     print("\n=== 4. Visualizaciones exploratorias (HU6) ===")
-    numeric_cols = ["temperature_C", "pH", "initial_mw_kDa", "crystallinity_pct",
-                     "surface_area_mm2", "k_day_inv"]
+    if source == "real":
+        corr_numeric_cols = ["temperature_C", "pH", "initial_mw_kDa", "porosity_pct", "k_day_inv"]
+    else:
+        corr_numeric_cols = ["temperature_C", "pH", "initial_mw_kDa", "crystallinity_pct",
+                              "surface_area_mm2", "k_day_inv"]
     p1 = plot_class_distribution(df_curves, "degradation_class")
-    p2 = plot_correlation_heatmap(df_curves, numeric_cols)
+    p2 = plot_correlation_heatmap(df_curves, corr_numeric_cols)
     p3 = plot_degradation_curves(df_long)
     print(f"Figuras guardadas:\n - {p1}\n - {p2}\n - {p3}")
 

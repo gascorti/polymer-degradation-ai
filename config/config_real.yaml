@@ -1,0 +1,70 @@
+# Configuración para correr el pipeline sobre el dataset REAL (HU1),
+# en vez del sintético. Uso: python main.py --config config/config_real.yaml
+
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed/dataset_real.csv"
+  external_data: "data/external"
+  figures: "outputs/figures"
+  reports: "outputs/reports"
+
+data:
+  source: "real"
+  real_dataset_path: "data/raw/Dataset_biodegradacion_210926.xlsx"
+  # Solo el núcleo comparable a "medios fisiológicos" (Alcance del proyecto,
+  # Sección 4): PBS/SBF/saliva artificial a ~37°C, sin condiciones extremas
+  # ni ensayos acelerados. Ver plan de integración para el detalle de los
+  # otros niveles (excluido/acelerado/extendido).
+  homogeneity_levels: ["nucleo"]
+  # PROVISORIO: bins por terciles de la distribución real de k (26/28/24 curvas
+  # por clase), NO calibrados con literatura clínica todavía -- los bins
+  # originales (pensados para el rango de k sintético) dejaban "alta" vacía,
+  # porque el k real en medios fisiológicos es ~10-100x menor. Revisar con la
+  # directora antes de reportar resultados finales de clasificación.
+  degradation_class_bins: [0.0, 0.0006, 0.007, 1.0]
+  degradation_class_labels: ["baja", "media", "alta"]
+
+features:
+  categorical_columns: ["polymer_type", "medium", "geometry_type", "fabrication_method"]
+  numeric_columns:
+    - "temperature_C"
+    - "pH"
+    - "initial_mw_kDa"
+    - "porosity_pct"
+    - "plla_fraction"
+    - "plga_fraction"
+    - "pcl_fraction"
+    - "peg_fraction"
+    - "lactide_fraction_in_plga"
+    - "glycolide_fraction_in_plga"
+    - "assay_duration_days"
+    - "n_points"
+
+split:
+  test_size: 0.2
+  val_size: 0.1
+  random_state: 42
+
+kinetics:
+  model: "pseudo_primer_orden"
+
+models:
+  random_forest:
+    n_estimators: 300
+    max_depth: 12
+    random_state: 42
+  xgboost:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    random_state: 42
+  lstm:
+    units: 32
+    epochs: 60
+    batch_size: 16
+    sequence_length: 10
+    random_state: 42
+
+mlflow:
+  tracking_uri: "mlruns"
+  experiment_name: "degradacion_polimeros_biocompatibles_real"

@@ -9,7 +9,10 @@ from sklearn.pipeline import Pipeline
 from src.preprocessing.features import build_preprocessor
 
 
-def build_random_forest_pipeline(n_estimators=300, max_depth=12, random_state=42) -> Pipeline:
+def build_random_forest_pipeline(
+    n_estimators=300, max_depth=12, random_state=42,
+    categorical_cols=None, numeric_cols=None,
+) -> Pipeline:
     model = RandomForestClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
@@ -17,6 +20,6 @@ def build_random_forest_pipeline(n_estimators=300, max_depth=12, random_state=42
         class_weight="balanced",
     )
     return Pipeline(steps=[
-        ("preprocessor", build_preprocessor()),
+        ("preprocessor", build_preprocessor(categorical_cols, numeric_cols)),
         ("model", model),
     ])

@@ -51,6 +51,18 @@ NUMERIC_COLUMNS = [
     "surface_area_mm2", "assay_duration_days", "n_points",
 ]
 
+# --- Esquema del dataset REAL (HU1, extracción bibliográfica), más rico que el
+# sintético: sin crystallinity_pct/surface_area_mm2 (no medidos en la literatura
+# relevada), con geometría/método de fabricación/porosidad y fracciones de
+# copolímero en su lugar. Ver src/data/load_real_dataset.py. ---
+REAL_CATEGORICAL_COLUMNS = ["polymer_type", "medium", "geometry_type", "fabrication_method"]
+REAL_NUMERIC_COLUMNS = [
+    "temperature_C", "pH", "initial_mw_kDa", "porosity_pct",
+    "plla_fraction", "plga_fraction", "pcl_fraction", "peg_fraction",
+    "lactide_fraction_in_plga", "glycolide_fraction_in_plga",
+    "assay_duration_days", "n_points",
+]
+
 
 @dataclass
 class ValidationResult:
