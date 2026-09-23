@@ -3,24 +3,11 @@
 Trabajo Final — Carrera de Especialización en Inteligencia Artificial (FIUBA)
 Autor: Lic. Gastón Corti · Director: Esp. Ing. Ariadna Garmendia
 
-Implementación del pipeline descripto en el plan de proyecto: extracción y
-estandarización de curvas de degradación (pérdida de masa vs. tiempo),
-ajuste cinético (constante *k*), y modelos supervisados (Random Forest,
-XGBoost, LSTM) para clasificar y predecir la tasa de degradación de
-polímeros biocompatibles en medios fisiológicos.
+Implementación del modelos de inteligencia artificial para extracción y
+estandarización de curvas de degradación para clasificar y predecir la tasa de degradación de
+polímeros biocompatibles en medios fisiológicos. 
 
-## Estado actual
-
-Este repo ya corre **de punta a punta con datos sintéticos** (generados con
-una cinética de pseudo-primer orden fisicoquímicamente plausible), mientras
-avanza la extracción real de curvas desde publicaciones (HU1, Épica 1). Esto
-permite desarrollar y validar todo el resto del pipeline (preprocesamiento,
-modelado, evaluación, visualización) sin esperar a tener el dataset real
-completo. Cuando la extracción bibliográfica esté lista, alcanza con
-reemplazar `data/raw/curvas_sinteticas.csv` por el CSV real (mismo esquema,
-ver `src/data/schema.py`) y correr `main.py` de nuevo.
-
-## Estructura del proyecto
+## Estructura del proyecto.
 
 ```
 polymer-degradation-ai/
@@ -57,7 +44,7 @@ polymer-degradation-ai/
 └── requirements.txt
 ```
 
-## Instalación
+## Instalación.
 
 ```bash
 python -m venv venv
@@ -69,7 +56,7 @@ pip install -r requirements.txt
 > pipeline los omite automáticamente (con un aviso) y sigue funcionando con
 > Random Forest. Instalalos para tener los 3 modelos y el tracking completo.
 
-## Trabajar en VS Code
+## Trabajar en VS Code.
 
 El repo ya incluye configuración lista en `.vscode/`:
 
@@ -89,7 +76,7 @@ Pasos para arrancar:
 
 El repo ya tiene `git init` con un `.gitignore` que excluye datos generados, `venv/`, cachés y corridas de MLflow — solo versiona código y configuración.
 
-## Uso rápido
+## Uso rápido.
 
 Correr todo el pipeline (genera datos sintéticos, estandariza, ajusta
 cinética, entrena y compara modelos, genera figuras):
@@ -130,25 +117,7 @@ pip install pytest
 pytest tests/ -v
 ```
 
-## Cómo incorporar datos reales (HU1)
-
-1. Extraer curvas con WebPlotDigitizer desde las publicaciones relevadas.
-2. Volcar cada curva a filas con las columnas de `LONG_FORMAT_COLUMNS`
-   (ver `src/data/schema.py`): `curve_id`, `source_doi`, `polymer_type`,
-   `medium`, `temperature_C`, `pH`, `initial_mw_kDa`, `crystallinity_pct`,
-   `surface_area_mm2`, `time_days`, `mass_loss_pct`.
-3. Guardar el CSV en `data/raw/` (podés tener varios archivos, uno por
-   lote de publicaciones relevadas).
-4. Ejecutar `main.py --no-synthetic` apuntando `standardize.run_standardization_pipeline`
-   a la lista de archivos reales (ver `src/preprocessing/standardize.py`,
-   función `run_standardization_pipeline`).
-
-## Métricas de éxito (Sección 8, CRISP-DM)
-
-- Clasificación (baja/media/alta): F1-score y accuracy ≥ 0.8.
-- Regresión de *k*: RMSE minimizado (LSTM).
-
-## Notas de gobernanza y ética (Sección 12 del plan)
+## Notas de gobernanza y ética.
 
 El pipeline trabaja exclusivamente con datos secundarios de publicaciones
 científicas (no hay datos personales ni clínicos). Los resultados de este
