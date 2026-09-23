@@ -10,4 +10,6 @@ data/raw/*.xlsx
 !data/processed/.gitkeep
 outputs/figures/*.png
 outputs/reports/*.csv
+outputs/figures_real/*.png
+outputs/reports_real/*.csv
 ~$*
