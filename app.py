@@ -18,7 +18,7 @@ from src.data.load_real_dataset import load_real_dataset, REAL_POINT_NUMERIC_COL
 from src.data.schema import REAL_CATEGORICAL_COLUMNS, REAL_NUMERIC_COLUMNS
 from src.preprocessing.standardize import standardize_units, handle_missing_and_outliers
 from src.preprocessing.kinetics import build_curve_level_dataset, categorize_degradation_rate
-from src.models.random_forest import build_random_forest_pipeline
+from src.models.random_forest import build_random_forest_pipeline, build_random_forest_regressor_pipeline
 from src.models.xgboost_model import build_xgboost_pipeline, XGBOOST_AVAILABLE
 
 CONFIG_PATH = "config/config_real.yaml"
@@ -79,6 +79,27 @@ def train_models(df_curves: pd.DataFrame, _cfg: dict):
         models["XGBoost"] = {"pipeline": xgb_pipeline, "classes": [idx_to_class[i] for i in range(len(classes))]}
 
     return models
+
+
+@st.cache_resource
+def train_k_regressor(df_curves: pd.DataFrame, _cfg: dict):
+    """
+    Entrena, por separado y sin modificar nada del entrenamiento de
+    Random Forest/XGBoost en train_models, un Random Forest de regresión
+    que predice k directamente a partir de las propiedades tabulares. Se
+    usa solo para reconstruir una curva de referencia en el predictor
+    interactivo (no participa de la comparación de modelos del proyecto).
+    """
+    feature_cols = REAL_CATEGORICAL_COLUMNS + REAL_NUMERIC_COLUMNS
+    X = df_curves[feature_cols]
+    y = df_curves["k_day_inv"]
+
+    rf_cfg = _cfg["models"]["random_forest"]
+    pipeline = build_random_forest_regressor_pipeline(
+        **rf_cfg, categorical_cols=REAL_CATEGORICAL_COLUMNS, numeric_cols=REAL_NUMERIC_COLUMNS
+    )
+    pipeline.fit(X, y)
+    return pipeline
 
 
 def reconstructed_curve(k, t_max, n=50):
@@ -171,6 +192,7 @@ with tab_predict:
         "su categoría de tasa de degradación (baja/media/alta)."
     )
     models = train_models(df_curves, cfg)
+    k_regressor = train_k_regressor(df_curves, cfg)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -220,6 +242,25 @@ with tab_predict:
         ))
         fig_proba.update_layout(yaxis_title="Probabilidad", yaxis_range=[0, 1], height=350)
         st.plotly_chart(fig_proba, use_container_width=True)
+
+        k_pred = float(k_regressor.predict(input_df)[0])
+        st.subheader("Forma de curva esperada")
+        st.caption(
+            "Reconstruida a partir de un k estimado por un Random Forest de regresión "
+            "entrenado sobre las mismas propiedades (no usa la LSTM, que requiere una "
+            "curva real como entrada)."
+        )
+        t_smooth, y_smooth = reconstructed_curve(k_pred, input_row["assay_duration_days"])
+        fig_curve = go.Figure(go.Scatter(
+            x=t_smooth, y=y_smooth, mode="lines",
+            line=dict(color=CLASS_COLORS.get(pred_class, "gray"), width=2),
+        ))
+        fig_curve.update_layout(
+            xaxis_title="Tiempo (días)", yaxis_title="Pérdida de masa (%)",
+            height=350,
+        )
+        st.plotly_chart(fig_curve, use_container_width=True)
+        st.caption(f"k estimado: {k_pred:.5f} día⁻¹")
 
         with st.expander("Ver composición de copolímero usada (mediana de curvas de este tipo)"):
             st.json(fractions)
